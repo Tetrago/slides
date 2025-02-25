@@ -19,6 +19,12 @@
         each = fn: genAttrs (attrNames (filterAttrs (_: v: v == "directory") (readDir ./.))) fn;
       in
       {
+        devShells.default = pkgs.mkShell {
+          packages = with pkgs; [
+            manim-slides
+          ];
+        };
+
         packages =
           let
             slides = each (
@@ -40,7 +46,7 @@
                   ];
 
                   buildPhase = ''
-                    manim-slides render $src/main.py Main && manim-slides convert --to=html Main ${name}.html ${optionalString pdf "&& manim-slides convert --to=pdf Main ${name}.pdf"}
+                    manim-slides render -q p $src/main.py Main && manim-slides convert --to=html Main ${name}.html ${optionalString pdf "&& manim-slides convert --to=pdf Main ${name}.pdf"}
                   '';
 
                   installPhase = ''
