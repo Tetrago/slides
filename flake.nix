@@ -19,6 +19,12 @@
         each = fn: genAttrs (attrNames (filterAttrs (_: v: v == "directory") (readDir ./.))) fn;
       in
       {
+        devShells.default = pkgs.mkShell {
+          packages = with pkgs; [
+            manim-slides
+          ];
+        };
+
         packages =
           let
             slides = each (
@@ -29,6 +35,7 @@
                   manim-slides,
                   monaspace,
                   pdf ? false,
+                  quality ? "h",
                 }:
                 stdenvNoCC.mkDerivation {
                   inherit name;
@@ -40,7 +47,7 @@
                   ];
 
                   buildPhase = ''
-                    manim-slides render $src/main.py Main && manim-slides convert --to=html Main ${name}.html ${optionalString pdf "&& manim-slides convert --to=pdf Main ${name}.pdf"}
+                    manim-slides render -q ${quality} $src/main.py Main && manim-slides convert --to=html Main ${name}.html ${optionalString pdf "&& manim-slides convert --to=pdf Main ${name}.pdf"}
                   '';
 
                   installPhase = ''
@@ -59,7 +66,13 @@
           // {
             default = pkgs.symlinkJoin {
               name = "slides";
-              paths = mapAttrsToList (_: v: v.override { pdf = true; }) slides;
+              paths = mapAttrsToList (
+                _: v:
+                v.override {
+                  pdf = true;
+                  quality = "k";
+                }
+              ) slides;
             };
           };
       }
