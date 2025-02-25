@@ -10,38 +10,58 @@
       system:
       let
         inherit (builtins) attrNames readDir;
-        inherit (nixpkgs.lib.attrsets) filterAttrs genAttrs;
+        inherit (nixpkgs) lib;
+        inherit (lib.attrsets) filterAttrs genAttrs mapAttrsToList;
+        inherit (lib.strings) optionalString;
 
         pkgs = nixpkgs.legacyPackages.${system};
 
         each = fn: genAttrs (attrNames (filterAttrs (_: v: v == "directory") (readDir ./.))) fn;
       in
       {
-        packages = each (
-          name:
-          pkgs.stdenvNoCC.mkDerivation {
-            inherit name;
-            src = ./${name};
+        packages =
+          let
+            slides = each (
+              name:
+              pkgs.callPackage (
+                {
+                  stdenvNoCC,
+                  manim-slides,
+                  monaspace,
+                  pdf ? false,
+                }:
+                stdenvNoCC.mkDerivation {
+                  inherit name;
+                  src = ./${name};
 
-            nativeBuildInputs = with pkgs; [
-              manim-slides
-              monaspace
-            ];
+                  nativeBuildInputs = [
+                    manim-slides
+                    monaspace
+                  ];
 
-            buildPhase = ''
-              manim-slides render $src/main.py Main && manim-slides convert --to=html Main ${name}.html
-            '';
+                  buildPhase = ''
+                    manim-slides render $src/main.py Main && manim-slides convert --to=html Main ${name}.html ${optionalString pdf "&& manim-slides convert --to=pdf Main ${name}.pdf"}
+                  '';
 
-            installPhase = ''
-              runHook preInstall
+                  installPhase = ''
+                    runHook preInstall
 
-              mkdir -p $out
-              cp -r ./${name}* $out/
+                    mkdir -p $out
+                    cp -r ./${name}* $out/
 
-              runHook postInstall
-            '';
-          }
-        );
+                    runHook postInstall
+                  '';
+                }
+              ) { }
+            );
+          in
+          slides
+          // {
+            default = pkgs.symlinkJoin {
+              name = "slides";
+              paths = mapAttrsToList (_: v: v.override { pdf = true; }) slides;
+            };
+          };
       }
     );
 }
