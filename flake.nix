@@ -9,14 +9,11 @@
     utils.lib.eachDefaultSystem (
       system:
       let
-        inherit (builtins) attrNames readDir;
         inherit (nixpkgs) lib;
-        inherit (lib.attrsets) filterAttrs genAttrs mapAttrsToList;
+        inherit (lib.attrsets) mapAttrs mapAttrsToList;
         inherit (lib.strings) optionalString;
 
         pkgs = nixpkgs.legacyPackages.${system};
-
-        each = fn: genAttrs (attrNames (filterAttrs (_: v: v == "directory") (readDir ./.))) fn;
       in
       {
         devShells.default = pkgs.mkShell {
@@ -27,8 +24,12 @@
 
         packages =
           let
-            slides = each (
-              name:
+            slides = {
+              binary_exploitation = "Binary Exploitation";
+            };
+
+            packages = mapAttrs (
+              name: value:
               pkgs.callPackage (
                 {
                   stdenvNoCC,
@@ -58,11 +59,16 @@
 
                     runHook postInstall
                   '';
+
+                  postInstall = ''
+                    substituteInPlace $out/${name}.html \
+                      --replace-fail "Manim Slides" "${value}"
+                  '';
                 }
               ) { }
-            );
+            ) slides;
           in
-          slides
+          packages
           // {
             default = pkgs.symlinkJoin {
               name = "slides";
@@ -72,7 +78,7 @@
                   pdf = true;
                   quality = "k";
                 }
-              ) slides;
+              ) packages;
             };
           };
       }
