@@ -55,7 +55,7 @@
                     runHook preInstall
 
                     mkdir -p $out
-                    cp -r ./${name}* $out/
+                    cp -rL ./${name}* $out/
 
                     runHook postInstall
                   '';
